@@ -1,4 +1,0 @@
-[submodule "helium-chromium"]
-	path = helium-chromium
-	url = https://github.com/thenhnn/helium-chromium.git
-	branch = nhnn/vertical-tabs
