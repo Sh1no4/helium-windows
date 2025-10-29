@@ -13,6 +13,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with: { submodules: true, fetch-depth: 0 }
+        
+      - name: Set git author
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Run bump-platform action from helium-chromium
         uses: imputnet/helium-chromium/.github/actions/bump-platform@main
