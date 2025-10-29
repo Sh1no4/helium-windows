@@ -20,7 +20,6 @@ jobs:
           git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Run bump-platform action from helium-chromium
-        continue-on-error: true
         uses: imputnet/helium-chromium/.github/actions/bump-platform@main
         with:
           token: ${{ secrets.GHPAT }}
