@@ -1,6 +1,6 @@
 name: Bump helium-chromium submodule to latest version
 
-于: workflow_dispatch
+on: workflow_dispatch
 
 permissions:
   contents: write
