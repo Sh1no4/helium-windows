@@ -20,7 +20,13 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-          path: 'source'
+
+      - name: List files for debugging
+        run: |
+          echo "Current directory: ${pwd}"
+          echo "Listing all files and directories recursively..."
+          Get-ChildItem -Recurse
+        shell: pwsh
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -38,27 +44,21 @@ jobs:
         with:
           node-version: 18
       
-      - name: Cache rust builds
-        uses: Swatinem/rust-cache@v2
-        with:
-          working-directory: ./source/helium-chromium
-          key: ${{ matrix.arch }}-v1
-
       - name: Install dependencies
         run: npm install
-        working-directory: ./source/helium-chromium
+        working-directory: ./helium-chromium
 
       - name: Run build to package installer
         if: github.event_name == 'release'
         run: npm run package
-        working-directory: ./source/helium-chromium
+        working-directory: ./helium-chromium
 
       - name: Upload artifact
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-${{ matrix.arch }}
-          path: source/helium-chromium/out/make
+          path: helium-chromium/out/make
 
   release:
     needs: build
@@ -69,11 +69,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
       - name: Get release info
         id: release_info
         uses: gregoranders/get-release-action@v1
-
       - name: Upload assets to release
         uses: softprops/action-gh-release@v1
         with:
