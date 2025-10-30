@@ -14,7 +14,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: helium-windows
+        working-directory: helium-windows/helium-chromium
         
     strategy:
       fail-fast: false
@@ -44,7 +44,7 @@ jobs:
       - name: Cache rust builds
         uses: Swatinem/rust-cache@v2
         with:
-          working-directory: helium-windows
+          working-directory: helium-windows/helium-chromium
           key: ${{ matrix.arch }}-v1
 
       - name: Setup node
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-${{ matrix.arch }}
-          path: helium-windows/out/make
+          path: helium-windows/helium-chromium/out/make
 
   release:
     needs: build
