@@ -11,6 +11,11 @@ on:
 jobs:
   build:
     runs-on: windows-2022
+    
+    defaults:
+      run:
+        working-directory: helium-windows
+        
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +44,8 @@ jobs:
       - name: Cache rust builds
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.arch }}-v1-${{ hashFiles('helium-windows/Cargo.lock') }}
+          working-directory: helium-windows
+          key: ${{ matrix.arch }}-v1
 
       - name: Setup node
         uses: actions/setup-node@v3
@@ -47,12 +53,10 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        working-directory: ./helium-windows
         run: npm install
 
       - name: Run build to package installer
         if: github.event_name == 'release'
-        working-directory: ./helium-windows
         run: npm run package
 
       - name: Upload artifact
@@ -60,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-${{ matrix.arch }}
-          path: ./helium-windows/out/make
+          path: helium-windows/out/make
 
   release:
     needs: build
