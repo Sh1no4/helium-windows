@@ -1,4 +1,4 @@
-name: Build and Release[test]
+name: Build and Release[Test]
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload artifact
         if: github.event_name == 'release'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifact-${{ matrix.arch }}
           path: ./out/make
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
