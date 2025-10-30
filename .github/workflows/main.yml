@@ -517,7 +517,7 @@ jobs:
           prerelease: true
           name: ${{ needs.build-final.outputs.version }}
           tag_name: ${{ needs.build-final.outputs.version }}
-          文件: |
+          files: |
             helium*
     outputs:
       assets: ${{ steps.publish.outputs.assets }}
