@@ -17,16 +17,18 @@ jobs:
         arch: [x86_64]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Create a clean working directory
+        run: |
+          mkdir build_dir
+          cd build_dir
+          echo "build_dir_path=${{ github.workspace }}/build_dir" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
           submodules: 'recursive'
-
-      - name: List files for debugging
-        run: |
-          echo "Current directory: ${pwd}"
-          echo "Listing all files and directories recursively..."
-          Get-ChildItem -Recurse
-        shell: pwsh
+          path: ${{ env.build_dir_path }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -44,21 +46,27 @@ jobs:
         with:
           node-version: 18
       
+      - name: Cache rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          working-directory: ${{ env.build_dir_path }}/helium-chromium
+          key: ${{ matrix.arch }}-v1
+
       - name: Install dependencies
         run: npm install
-        working-directory: ./helium-chromium
+        working-directory: ${{ env.build_dir_path }}/helium-chromium
 
       - name: Run build to package installer
         if: github.event_name == 'release'
         run: npm run package
-        working-directory: ./helium-chromium
+        working-directory: ${{ env.build_dir_path }}/helium-chromium
 
       - name: Upload artifact
         if: github.event_name == 'release'
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-${{ matrix.arch }}
-          path: helium-chromium/out/make
+          path: ${{ env.build_dir_path }}/helium-chromium/out/make
 
   release:
     needs: build
