@@ -1,0 +1,81 @@
+name: Build and Release[test]
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: ${{ matrix.arch == 'x86_64' && 'x86_64-pc-windows-msvc' || 'aarch64-pc-windows-msvc' }}
+
+      - name: Cache rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.arch }}-v1
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run build to package installer
+        if: github.event_name == 'release'
+        run: npm run package
+
+      - name: Upload artifact
+        if: github.event_name == 'release'
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifact-${{ matrix.arch }}
+          path: ./out/make
+
+  release:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Get release info
+        id: release_info
+        uses: gregoranders/get-release-action@v1
+
+      - name: Upload assets to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.zip
