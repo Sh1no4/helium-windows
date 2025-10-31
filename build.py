@@ -388,10 +388,10 @@ def main():
 
     # Run ninja
     if args.ci:
-        max_time = 5.5 * 60 * 60
+        max_time = 5 * 60 * 60
         secs_spent = int(time.time()) - args.ci
         timeout = int(max_time - secs_spent)
-        print(f"{timeout} seconds left for build")
+        print(f"Safety margin applied. Build will run for a maximum of {timeout} more seconds in this job.")
 
         if args.do_package:
             os.chdir(_ROOT_DIR)
