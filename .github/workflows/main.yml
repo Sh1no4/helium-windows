@@ -1,8 +1,4 @@
-#
-# 15-Stage Relay Build for Windows (x86_64) - With Dependencies Fix
-# This workflow is designed to overcome the 6-hour job limit for large projects.
-#
-name: Build and release binaries (Windows x64)
+name: Build and release binaries
 
 on:
   workflow_dispatch:
@@ -13,12 +9,9 @@ on:
         default: 'windows-2022'
 
 jobs:
-  # =================================================================
-  #  STAGE 1: Initial Build
-  # =================================================================
   build-1:
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345 # 留出 15 分钟用于 artifact 上传
+    timeout-minutes: 345
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
@@ -31,9 +24,6 @@ jobs:
         with:
           python-version: '3.12'
       
-      # ============================================================
-      #  !!!! 新增步骤：安装 Python 依赖 !!!!
-      # ============================================================
       - name: Install Python dependencies
         run: pip install Pillow
 
@@ -59,12 +49,6 @@ jobs:
           name: chromium-build-state-x64
           path: C:\helium-windows\build\src
           retention-days: 1
-
-  # =================================================================
-  #  RELAY STAGES 2-15: Continue build if not finished
-  # =================================================================
-  # [NOTE: The "pip install" step is added to ALL subsequent jobs]
-  # =================================================================
 
   build-2:
     needs: build-1
