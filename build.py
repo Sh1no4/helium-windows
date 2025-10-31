@@ -74,7 +74,6 @@ def _run_build_process(*args, **kwargs):
                    encoding=ENCODING,
                    **kwargs)
 
-
 def _run_build_process_timeout(*args, timeout):
     """
     Runs the subprocess with the correct environment variables for building
@@ -88,20 +87,34 @@ def _run_build_process_timeout(*args, timeout):
         proc.stdin.write('\n'.join(cmd_input))
         proc.stdin.close()
         try:
+            print(f"Build process started with a timeout of {timeout} seconds.")
             proc.wait(timeout)
             if proc.returncode != 0:
+                print(f"Build process failed with return code {proc.returncode}")
                 raise RuntimeError('Build failed!')
-        except subprocess.TimeoutExpired:
-            print('Sending keyboard interrupt')
-            for _ in range(3):
-                ctypes.windll.kernel32.GenerateConsoleCtrlEvent(1, proc.pid)
-                time.sleep(1)
-            try:
-                proc.wait(10)
-            except:
-                proc.kill()
-            sys.exit(42)
+            else:
+                print("Build process finished successfully in this stage.")
+                if 'GITHUB_OUTPUT' in os.environ:
+                    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                        print('finished=true', file=f)
 
+        except subprocess.TimeoutExpired:
+            print('Build timeout reached. Stopping gracefully to continue in the next job.')
+            print('Terminating Ninja process...')
+            proc.terminate() 
+            try:
+                proc.wait(60) 
+            except:
+                print('Process did not terminate gracefully, killing it.')
+                proc.kill()
+            
+            print("Setting output 'finished' to 'false'.")
+            if 'GITHUB_OUTPUT' in os.environ:
+                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                    print('finished=false', file=f)
+            
+            print("Exiting script gracefully.")
+            sys.exit(0)
 
 def _make_tmp_paths():
     """Creates TMP and TEMP variable dirs so ninja won't fail"""
