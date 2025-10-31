@@ -325,7 +325,7 @@ jobs:
 
   build-final:
     needs: build-15
-    if: success() and (needs.build-15.outputs.finished == 'true')
+    if: success() && needs.build-15.outputs.finished == 'true'
     runs-on: ${{ github.event.inputs.runner }}
     outputs:
       version: ${{ steps.package.outputs.version }}
@@ -355,14 +355,14 @@ jobs:
         id: installer
         uses: ./.github/actions/stage
         with:
-          from_artifact: true
+          from_artifact: true 
           gen_installer: true
 
       - name: Generate user-facing artifacts
         id: package
         uses: ./.github/actions/stage
         with:
-          from_artifact: false
+          from_artifact: false 
           do_package: true
 
   publish-release:
