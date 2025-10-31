@@ -33,15 +33,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}-v2
+          key: ${{ runner.os }}-chromium-source-v2-${{ hashFiles('helium-chromium/utils/clone.py') }}
           restore-keys: |
-            ${{ runner.os }}-chromium-source-
+            ${{ runner.os }}-chromium-source-v2-
 
       - name: Download Chromium Source (if cache missed)
         if: steps.cache-source.outputs.cache-hit != 'true'
         run: |
           python helium-chromium\utils\clone.py -o build\src -p win64
         working-directory: C:\helium-windows
+
+      - name: Bootstrap Depot Tools and Download Binaries
+        if: steps.cache-source.outputs.cache-hit != 'true'
+        run: |
+          .\build\src\uc_staging\depot_tools\gclient.bat
+        working-directory: C:\helium-windows
+        shell: cmd
 
   build-1:
     needs: setup-source
@@ -64,9 +71,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
+          key: ${{ runner.os }}-chromium-source-v2-${{ hashFiles('helium-chromium/utils/clone.py') }}
           restore-keys: |
-            ${{ runner.os }}-chromium-source-
+            ${{ runner.os }}-chromium-source-v2-
       - name: Install Action Dependencies
         run: npm install
         working-directory: ./.github/actions/stage
