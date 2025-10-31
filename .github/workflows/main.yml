@@ -1,3 +1,5 @@
+#WT*
+
 name: Build and release binaries
 
 on:
@@ -11,7 +13,7 @@ on:
 jobs:
   setup-source:
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,7 +33,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
+          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}-v2
           restore-keys: |
             ${{ runner.os }}-chromium-source-
 
