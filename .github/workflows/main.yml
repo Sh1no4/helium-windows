@@ -21,9 +21,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Python dependencies
+      - name: Install Python dependencies for clone script
         run: pip install Pillow httplib2 PySocks
-      - name: Init
+      - name: Init Workspace
         run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
 
       - name: Cache Chromium Source Code
@@ -44,7 +44,7 @@ jobs:
   build-1:
     needs: setup-source
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
@@ -56,13 +56,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - name: Init
+      - name: Init Workspace
         run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - name: Configure sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Restore Chromium Source from Cache
         uses: actions/cache@v4
         with:
@@ -70,681 +65,281 @@ jobs:
           key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
           restore-keys: |
             ${{ runner.os }}-chromium-source-
-      
-      - name: Run Build Script (Stage 1)
+      - name: Install Action Dependencies
+        run: npm install
+        working-directory: ./.github/actions/stage
+      - name: Configure sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Run Stage 1
         id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-
-      - name: Upload Build Output
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/stage
         with:
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
-          
+          from_artifact: false
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+
   build-2:
     needs: build-1
     if: needs.build-1.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 2)
+          submodules: 'recursive'
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Init Workspace
+        run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
+      - name: Install Action Dependencies
+        run: npm install
+        working-directory: ./.github/actions/stage
+      - name: Configure sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Run Stage 2
         id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+        uses: ./.github/actions/stage
+        with:
+          from_artifact: true
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
 
   build-3:
     needs: build-2
     if: needs.build-2.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 3)
+          submodules: 'recursive'
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Init Workspace
+        run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
+      - name: Install Action Dependencies
+        run: npm install
+        working-directory: ./.github/actions/stage
+      - name: Configure sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Run Stage 3
         id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+        uses: ./.github/actions/stage
+        with:
+          from_artifact: true
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
 
   build-4:
     needs: build-3
     if: needs.build-3.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 4)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-5:
     needs: build-4
     if: needs.build-4.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 5)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-6:
     needs: build-5
     if: needs.build-5.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 6)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-7:
     needs: build-6
     if: needs.build-6.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 7)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-8:
     needs: build-7
     if: needs.build-7.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 8)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-9:
     needs: build-8
     if: needs.build-8.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 9)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-10:
     needs: build-9
     if: needs.build-9.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 10)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-11:
     needs: build-10
     if: needs.build-10.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 11)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-12:
     needs: build-11
     if: needs.build-11.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 12)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-13:
     needs: build-12
     if: needs.build-12.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 13)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-14:
     needs: build-13
     if: needs.build-13.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 14)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-15:
     needs: build-14
     if: needs.build-14.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345
+    timeout-minutes: 360
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-      - uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Restore Chromium Source from Cache
-        uses: actions/cache@v4
-        with:
-          path: C:\helium-windows\build\src
-          key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
-          restore-keys: |
-            ${{ runner.os }}-chromium-source-
-
-      - name: Download Build Output
-        uses: actions/download-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
-      - name: Run Build Script (Stage 15)
-        id: stage
-        run: |
-          $startTime = [int64](([datetime]::UtcNow).Ticks / 10000000 - (New-TimeSpan -Start (Get-Date "1970-01-01") -End (Get-Date).ToUniversalTime()).TotalSeconds)
-          python build.py --ci $startTime
-        working-directory: C:\helium-windows
-        env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      
-      - name: Upload Build Output for Next Job
-        if: steps.stage.outputs.finished == 'false'
-        uses: actions/upload-artifact@v4
-        with: 
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-          retention-days: 1
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
 
   build-final:
-    needs: [build-1, build-2, build-3, build-4, build-5,build-6,build-7,build-8,build-9,build-10,build-11,build-12,build-13,build-14, build-15]
-    if: success() && (needs.build-1.outputs.finished == 'true' || needs.build-2.outputs.finished == 'true' || needs.build-3.outputs.finished == 'true' || needs.build-4.outputs.finished == 'true' || needs.build-5.outputs.finished == 'true' || needs.build-6.outputs.finished == 'true' || needs.build-7.outputs.finished == 'true' || needs.build-8.outputs.finished == 'true' || needs.build-9.outputs.finished == 'true' || needs.build-10.outputs.finished == 'true' || needs.build-11.outputs.finished == 'true' || needs.build-12.outputs.finished == 'true' || needs.build-13.outputs.finished == 'true' || needs.build-14.outputs.finished == 'true' || needs.build-15.outputs.finished == 'true')
+    needs: build-15
+    if: success() and (needs.build-15.outputs.finished == 'true')
     runs-on: ${{ github.event.inputs.runner }}
     outputs:
-      version: ${{ steps.stage3.outputs.version }}
+      version: ${{ steps.package.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Install Python dependencies
-        run: pip install Pillow httplib2 PySocks
-      - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Init Workspace
+        run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - name: Restore Chromium Source from Cache
         uses: actions/cache@v4
         with:
@@ -752,39 +347,33 @@ jobs:
           key: ${{ runner.os }}-chromium-source-${{ hashFiles('helium-chromium/utils/clone.py') }}
           restore-keys: |
             ${{ runner.os }}-chromium-source-
-            
-      - name: Download Final Build Output
-        uses: actions/download-artifact@v4
-        with:
-          name: chromium-build-output-x64
-          path: C:\helium-windows\build\src\out\Default
-      
+      - name: Install Action Dependencies
+        run: npm install
+        working-directory: ./.github/actions/stage
+
       - name: Build Helium installer
-        run: python build.py --build-installer
-        working-directory: C:\helium-windows
-      
-      - name: Generate user-facing artifacts
-        id: stage3
-        run: python build.py --do-package
-        working-directory: C:\helium-windows
-      
-      - name: Upload Release Packages
-        uses: actions/upload-artifact@v4
+        id: installer
+        uses: ./.github/actions/stage
         with:
-          name: helium-release-packages-x64
-          path: |
-            C:\helium-windows\helium-*.zip
-            C:\helium-windows\helium-*.exe
+          from_artifact: true
+          gen_installer: true
+
+      - name: Generate user-facing artifacts
+        id: package
+        uses: ./.github/actions/stage
+        with:
+          from_artifact: false
+          do_package: true
 
   publish-release:
     needs: build-final
     if: success()
     runs-on: ubuntu-latest
     steps:
-      - name: Download package
+      - name: Download release packages
         uses: actions/download-artifact@v4
         with:
-          name: helium-release-packages-x64
+          name: helium-x86_64
       - name: Publish release
         id: publish
         uses: softprops/action-gh-release@v2
