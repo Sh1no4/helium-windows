@@ -1,6 +1,8 @@
-#BBBBBBRUH
-
-name: Build and release binaries
+#
+# 15-Stage Relay Build for Windows (x86_64) - With Dependencies Fix
+# This workflow is designed to overcome the 6-hour job limit for large projects.
+#
+name: Build and release binaries (Windows x64)
 
 on:
   workflow_dispatch:
@@ -11,9 +13,12 @@ on:
         default: 'windows-2022'
 
 jobs:
+  # =================================================================
+  #  STAGE 1: Initial Build
+  # =================================================================
   build-1:
     runs-on: ${{ github.event.inputs.runner }}
-    timeout-minutes: 345 
+    timeout-minutes: 345 # 留出 15 分钟用于 artifact 上传
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
     steps:
@@ -25,11 +30,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      
+      # ============================================================
+      #  !!!! 新增步骤：安装 Python 依赖 !!!!
+      # ============================================================
+      - name: Install Python dependencies
+        run: pip install Pillow
+
       - name: Init
         run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - name: Configure sccache
         uses: mozilla-actions/sccache-action@v0.0.9
-        
+
       - name: Run Build Script (Stage 1)
         id: stage
         run: |
@@ -46,7 +58,13 @@ jobs:
         with:
           name: chromium-build-state-x64
           path: C:\helium-windows\build\src
-          retention-days: 5
+          retention-days: 1
+
+  # =================================================================
+  #  RELAY STAGES 2-15: Continue build if not finished
+  # =================================================================
+  # [NOTE: The "pip install" step is added to ALL subsequent jobs]
+  # =================================================================
 
   build-2:
     needs: build-1
@@ -59,6 +77,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -87,6 +107,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -107,7 +129,6 @@ jobs:
   build-4:
     needs: build-3
     if: needs.build-3.outputs.finished == 'false'
-    # ... (steps are identical to build-3)
     runs-on: ${{ github.event.inputs.runner }}
     timeout-minutes: 345
     outputs:
@@ -116,6 +137,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -144,6 +167,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -172,6 +197,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -200,6 +227,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -216,7 +245,7 @@ jobs:
         if: steps.stage.outputs.finished == 'false'
         uses: actions/upload-artifact@v4
         with: { name: chromium-build-state-x64, path: C:\helium-windows\build\src, retention-days: 1 }
-        
+
   build-8:
     needs: build-7
     if: needs.build-7.outputs.finished == 'false'
@@ -228,6 +257,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -256,6 +287,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -284,6 +317,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -312,6 +347,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -328,7 +365,7 @@ jobs:
         if: steps.stage.outputs.finished == 'false'
         uses: actions/upload-artifact@v4
         with: { name: chromium-build-state-x64, path: C:\helium-windows\build\src, retention-days: 1 }
-        
+
   build-12:
     needs: build-11
     if: needs.build-11.outputs.finished == 'false'
@@ -340,6 +377,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -356,7 +395,7 @@ jobs:
         if: steps.stage.outputs.finished == 'false'
         uses: actions/upload-artifact@v4
         with: { name: chromium-build-state-x64, path: C:\helium-windows\build\src, retention-days: 1 }
-        
+
   build-13:
     needs: build-12
     if: needs.build-12.outputs.finished == 'false'
@@ -368,6 +407,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -396,6 +437,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -424,6 +467,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
       - uses: mozilla-actions/sccache-action@v0.0.9
       - name: Download Build State
@@ -436,12 +481,10 @@ jobs:
           python build.py --ci $startTime
         working-directory: C:\helium-windows
         env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" }
-      # The last relay job does not need to upload an artifact,
-      # as the next job is the final one.
 
   build-final:
     needs: [build-1, build-2, build-3, build-4, build-5,build-6,build-7,build-8,build-9,build-10,build-11,build-12,build-13,build-14, build-15]
-    if: success() && (needs.build-1.outputs.finished == 'true' || needs.build-2.outputs.finished == 'true' || needs.build-3.outputs.finished == 'true' || needs.build-4.outputs.finished == 'true' || needs.build-5.outputs.finished == 'true' || needs.build-6.outputs.finished == 'true' || needs.build-7.outputs.finished == 'true' || needs.build-8.outputs.finished == 'true' || needs.build-9.outputs.finished == 'true' || needs.build-10.outputs.finished == 'true' || needs.build-11.outputs.finished == 'true' || needs.build-12.outputs.finished == 'true' || needs.build-13.outputs.finished == 'true' || needs.build-14.outputs.finished == 'true' || needs.build-15.outputs.finished == 'true') 
+    if: success() && (needs.build-1.outputs.finished == 'true' || needs.build-2.outputs.finished == 'true' || needs.build-3.outputs.finished == 'true' || needs.build-4.outputs.finished == 'true' || needs.build-5.outputs.finished == 'true' || needs.build-6.outputs.finished == 'true' || needs.build-7.outputs.finished == 'true' || needs.build-8.outputs.finished == 'true' || needs.build-9.outputs.finished == 'true' || needs.build-10.outputs.finished == 'true' || needs.build-11.outputs.finished == 'true' || needs.build-12.outputs.finished == 'true' || needs.build-13.outputs.finished == 'true' || needs.build-14.outputs.finished == 'true' || needs.build-15.outputs.finished == 'true')
     runs-on: ${{ github.event.inputs.runner }}
     outputs:
       version: ${{ steps.stage3.outputs.version }}
@@ -449,24 +492,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+      - name: Install Python dependencies
+        run: pip install Pillow
       - run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
-
       - name: Download Completed Build State
         uses: actions/download-artifact@v4
         with:
           name: chromium-build-state-x64
           path: C:\helium-windows\build\src
-
       - name: Build Helium installer
         id: stage2
         run: python build.py --build-installer
         working-directory: C:\helium-windows
-
       - name: Generate user-facing artifacts
         id: stage3
         run: python build.py --do-package
         working-directory: C:\helium-windows
-      
       - name: Upload Release Packages
         uses: actions/upload-artifact@v4
         with:
@@ -484,7 +525,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: helium-release-packages-x64
-
       - name: Publish release
         id: publish
         uses: softprops/action-gh-release@v2
