@@ -546,8 +546,8 @@ jobs:
           retention-days: 1
 
   build-12:
-    needs: build-12
-    if: needs.build-12.outputs.finished == 'false'
+    needs: build-11
+    if: needs.build-11.outputs.finished == 'false'
     runs-on: ${{ github.event.inputs.runner }}
     timeout-minutes: 345
     outputs:
