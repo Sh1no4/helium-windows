@@ -1,0 +1,65 @@
+name: Build test
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        required: false
+        description: 'Runner image name'
+        default: 'windows-2022'
+
+jobs:
+  setup-source:
+    runs-on: ${{ github.event.inputs.runner }}
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies for clone script
+        run: pip install Pillow httplib2 PySocks
+      - name: Init Workspace
+        run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse
+
+      - name: Cache Chromium Source Code
+        id: cache-source
+        uses: actions/cache@v4
+        with:
+          path: C:\helium-windows\build\src
+          key: ${{ runner.os }}-chromium-source-v2-${{ hashFiles('helium-chromium/utils/clone.py') }}
+          restore-keys: |
+            ${{ runner.os }}-chromium-source-v2-
+
+      - name: Download Chromium Source (if cache missed)
+        if: steps.cache-source.outputs.cache-hit != 'true'
+        run: |
+          python helium-chromium\utils\clone.py -o build\src -p win64
+        working-directory: C:\helium-windows
+
+      - name: Bootstrap Depot Tools and Download Binaries
+        if: steps.cache-source.outputs.cache-hit != 'true'
+        run: |
+          .\build\src\uc_staging\depot_tools\gclient.bat
+        working-directory: C:\helium-windows
+        shell: cmd
+        
+  build-1:
+    needs: setup-source
+    runs-on: ${{ github.event.inputs.runner }}
+    timeout-minutes: 360
+    outputs:
+      finished: ${{ steps.stage.outputs.finished }}
+    steps:
+      - { uses: actions/checkout@v4, with: { submodules: 'recursive' } }
+      - { uses: actions/setup-python@v5, with: { python-version: '3.12' } }
+      - { run: Copy-Item -Path . -Destination "C:\helium-windows" -Recurse }
+      - { uses: actions/cache@v4, with: { path: C:\helium-windows\build\src, key: '${{ runner.os }}-chromium-source-v2-${{ hashFiles(''helium-chromium/utils/clone.py'') }}', restore-keys: '${{ runner.os }}-chromium-source-v2-' } }
+      - { run: npm install, working-directory: ./.github/actions/stage }
+      - { uses: mozilla-actions/sccache-action@v0.0.9 }
+      - { id: stage, uses: ./.github/actions/stage, with: { from_artifact: false }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } }
+
