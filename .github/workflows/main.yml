@@ -47,7 +47,7 @@ jobs:
           .\build\src\uc_staging\depot_tools\gclient.bat
         working-directory: C:\helium-windows
         shell: cmd
-
+        
   build-1:
     needs: setup-source
     runs-on: ${{ github.event.inputs.runner }}
@@ -91,7 +91,7 @@ jobs:
   build-13: { needs: build-12, if: "needs.build-12.outputs.finished == 'false'", runs-on: "${{ github.event.inputs.runner }}", timeout-minutes: 360, outputs: { finished: "${{ steps.stage.outputs.finished }}" }, steps: [ { uses: actions/checkout@v4, with: { submodules: 'recursive' } }, { uses: actions/setup-python@v5, with: { python-version: '3.12' } }, { run: "Copy-Item -Path . -Destination \"C:\\helium-windows\" -Recurse" }, { run: "npm install", working-directory: ./.github/actions/stage }, { uses: mozilla-actions/sccache-action@v0.0.9 }, { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } } ] }
   build-14: { needs: build-13, if: "needs.build-13.outputs.finished == 'false'", runs-on: "${{ github.event.inputs.runner }}", timeout-minutes: 360, outputs: { finished: "${{ steps.stage.outputs.finished }}" }, steps: [ { uses: actions/checkout@v4, with: { submodules: 'recursive' } }, { uses: actions/setup-python@v5, with: { python-version: '3.12' } }, { run: "Copy-Item -Path . -Destination \"C:\\helium-windows\" -Recurse" }, { run: "npm install", working-directory: ./.github/actions/stage }, { uses: mozilla-actions/sccache-action@v0.0.9 }, { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } } ] }
   build-15: { needs: build-14, if: "needs.build-14.outputs.finished == 'false'", runs-on: "${{ github.event.inputs.runner }}", timeout-minutes: 360, outputs: { finished: "${{ steps.stage.outputs.finished }}" }, steps: [ { uses: actions/checkout@v4, with: { submodules: 'recursive' } }, { uses: actions/setup-python@v5, with: { python-version: '3.12' } }, { run: "Copy-Item -Path . -Destination \"C:\\helium-windows\" -Recurse" }, { run: "npm install", working-directory: ./.github/actions/stage }, { uses: mozilla-actions/sccache-action@v0.0.9 }, { id: stage, uses: ./.github/actions/stage, with: { from_artifact: true }, env: { SCCACHE_GHA_ENABLED: "true", RUSTC_WRAPPER: "sccache" } } ] }
-
+  
   build-final:
     needs: build-15
     if: success() && needs.build-15.outputs.finished == 'true'
@@ -149,7 +149,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           prerelease: true
-          name: ${{ needs.build-final.outputs.version || format('Helium Build {0}'， github.run_number) }}
+          name: ${{ needs.build-final.outputs.version || format('Helium Build {0}', github.run_number) }}
           tag_name: ${{ needs.build-final.outputs.version || format('build-{0}', github.run_number) }}
-          文件: |
-            helium*```
+          files: |
+            helium*
