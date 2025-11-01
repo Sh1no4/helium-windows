@@ -74,6 +74,7 @@ def _run_build_process(*args, **kwargs):
                    encoding=ENCODING,
                    **kwargs)
 
+
 def _run_build_process_timeout(*args, timeout):
     """
     Runs the subprocess with the correct environment variables for building
@@ -87,34 +88,20 @@ def _run_build_process_timeout(*args, timeout):
         proc.stdin.write('\n'.join(cmd_input))
         proc.stdin.close()
         try:
-            print(f"Build process started with a timeout of {timeout} seconds.")
             proc.wait(timeout)
             if proc.returncode != 0:
-                print(f"Build process failed with return code {proc.returncode}")
                 raise RuntimeError('Build failed!')
-            else:
-                print("Build process finished successfully in this stage.")
-                if 'GITHUB_OUTPUT' in os.environ:
-                    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                        print('finished=true', file=f)
-
         except subprocess.TimeoutExpired:
-            print('Build timeout reached. Stopping gracefully to continue in the next job.')
-            print('Terminating Ninja process...')
-            proc.terminate() 
+            print('Sending keyboard interrupt')
+            for _ in range(3):
+                ctypes.windll.kernel32.GenerateConsoleCtrlEvent(1, proc.pid)
+                time.sleep(1)
             try:
-                proc.wait(60) 
+                proc.wait(10)
             except:
-                print('Process did not terminate gracefully, killing it.')
                 proc.kill()
-            
-            print("Setting output 'finished' to 'false'.")
-            if 'GITHUB_OUTPUT' in os.environ:
-                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                    print('finished=false', file=f)
-            
-            print("Exiting script gracefully.")
-            sys.exit(0)
+            sys.exit(42)
+
 
 def _make_tmp_paths():
     """Creates TMP and TEMP variable dirs so ninja won't fail"""
@@ -391,7 +378,7 @@ def main():
         max_time = 5 * 60 * 60
         secs_spent = int(time.time()) - args.ci
         timeout = int(max_time - secs_spent)
-        print(f"Safety margin applied. Build will run for a maximum of {timeout} more seconds in this job.")
+        print(f"{timeout} seconds left for build")
 
         if args.do_package:
             os.chdir(_ROOT_DIR)
