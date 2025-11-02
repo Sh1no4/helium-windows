@@ -18,4 +18,4 @@ jobs:
         uses: thenhnn/helium-chromium/.github/actions/bump-platform@nhnn/vertical-tabs-142
         with:
           token: ${{ secrets.GHPAT }}
-          revision: '142.0.7444.59'
+          chromium_version: '142.0.7444.59'
