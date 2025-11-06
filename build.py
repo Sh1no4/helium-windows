@@ -375,7 +375,7 @@ def main():
 
     # Run ninja
     if args.ci:
-        max_time = 5.5 * 60 * 60
+        max_time = 5.3 * 60 * 60
         secs_spent = int(time.time()) - args.ci
         timeout = int(max_time - secs_spent)
         print(f"{timeout} seconds left for build")

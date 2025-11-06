@@ -15,6 +15,6 @@ jobs:
         with: { submodules: true, fetch-depth: 0 }
 
       - name: Run bump-platform action from helium-chromium
-        uses: imputnet/helium-chromium/.github/actions/bump-platform@main
+        uses: Sh1no4/helium-chromium/.github/actions/bump-platform@main
         with:
           token: ${{ secrets.GHPAT }}
